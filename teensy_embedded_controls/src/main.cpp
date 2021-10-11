@@ -10,7 +10,9 @@
 
 #include <std_msgs/msg/int32.h>
 
-#include <Eigen.h>
+// #include <Eigen.h>
+
+#include <twist_to_motor.h>
 
 rcl_subscription_t subscriber;
 rcl_publisher_t publisher;
@@ -21,9 +23,6 @@ rclc_support_t support;
 rcl_allocator_t allocator;
 rcl_node_t node;
 rcl_timer_t timer;
-
-Eigen::MatrixXd I3(3,3);
-Eigen::VectorXd t(3), res(3);
 
 #define LED_PIN 13
 
@@ -87,7 +86,6 @@ void setup() {
   RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
 
-  I3 = Eigen::MatrixXd::Identity(3,3);
 }
 
 
@@ -99,8 +97,5 @@ void loop() {
 //  std_msgs__msg__Int32 msg;
 //  msg.data = 1;
 //  RCSOFTCHECK(rcl_publish(&publisher_heartbeat, &msg, NULL));
-
-  t << 1., 2.3, 4.5;
-  res = I3*t;
 
 }
