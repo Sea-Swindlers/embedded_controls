@@ -7,7 +7,7 @@
 
 #include <Eigen.h>
 #include <Dense>
-#include <twist_to_motor.h>
+#include <twist_to_thrusts.h>
 
 
 // void setUp(void) {

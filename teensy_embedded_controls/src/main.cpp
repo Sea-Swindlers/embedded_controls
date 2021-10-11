@@ -12,12 +12,18 @@
 
 // #include <Eigen.h>
 
-#include <twist_to_motor.h>
+#include <twist_to_thrusts.h>
 
 rcl_subscription_t subscriber;
-rcl_publisher_t publisher;
-rcl_publisher_t publisher_heartbeat;
 std_msgs__msg__Int32 msg;
+
+rcl_publisher_t publisher_internal;
+
+rcl_subscription_t subscriber_internal;
+std_msgs__msg__Int32 msg_internal;
+
+rcl_publisher_t publisher;
+
 rclc_executor_t executor;
 rclc_support_t support;
 rcl_allocator_t allocator;
@@ -37,15 +43,29 @@ void error_loop(){
   }
 }
 
+
 void subscription_callback(const void * msgin)
-{  
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+  digitalWrite(LED_PIN, (msg->data == 0) ? LOW : HIGH);
+  
+  RCCHECK(rcl_publish(&publisher_internal, msg, NULL));
+  // RCCHECK(rcl_publish(&publisher, msg, NULL));
+}
+
+
+void subscription_callback_internal(const void * msgin)
+{
   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
   digitalWrite(LED_PIN, (msg->data == 0) ? LOW : HIGH);
   
   RCCHECK(rcl_publish(&publisher, msg, NULL));
 }
 
+
 void setup() {
+  int num_handles = 0;
+
   set_microros_transports();
   
   pinMode(LED_PIN, OUTPUT);
@@ -68,6 +88,24 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "/micro_ros_arduino_subscriber"));
+  num_handles++;  // SUPER IMPORTANT, DO NOT FORGET OR MICRO ROS WILL BREAK IN WEIRD WAYS
+
+  RCCHECK(rclc_publisher_init_best_effort(
+  // RCCHECK(rclc_publisher_init_default(
+    &publisher_internal,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+    "/teensy_to_teensy"));
+
+
+
+  RCCHECK(rclc_subscription_init_best_effort(
+//  RCCHECK(rclc_subscription_init_default(
+    &subscriber_internal,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+    "/teensy_to_teensy"));
+  num_handles++;
 
   RCCHECK(rclc_publisher_init_best_effort(
 //  RCCHECK(rclc_publisher_init_default(
@@ -76,15 +114,11 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "/micro_ros_arduino_node_publisher2"));
 
-  RCCHECK(rclc_publisher_init_default(
-    &publisher_heartbeat,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-    "/micro_ros_arduino_node_heartbeat"));
 
   // create executor
-  RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_init(&executor, &support.context, num_handles, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_internal, &msg_internal, &subscription_callback_internal, ON_NEW_DATA));
 
 }
 

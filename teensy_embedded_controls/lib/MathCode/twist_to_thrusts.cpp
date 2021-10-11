@@ -3,7 +3,7 @@
 
 #include <eigen_utilities.h>
 
-#include <twist_to_motor.h>
+#include <twist_to_thrusts.h>
 
 TwistToMotor::TwistToMotor(std::vector<Vector6d> input_motor_vectors) {
 
