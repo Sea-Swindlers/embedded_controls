@@ -1,5 +1,5 @@
 #include <eigen_utilities.h>
-#include <Dense>
+#include <Eigen/Dense>
 
 
 Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& a) {

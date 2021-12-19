@@ -5,7 +5,7 @@
 #define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 
 #include <vector>
-#include <Eigen.h>
+#include <eigen.h>
 
 #include <eigen_utilities.h>
 

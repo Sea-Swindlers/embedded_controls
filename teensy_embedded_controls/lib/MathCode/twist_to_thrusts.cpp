@@ -1,5 +1,5 @@
 #include <vector>
-#include <Eigen.h>
+#include <eigen.h>
 
 #include <eigen_utilities.h>
 

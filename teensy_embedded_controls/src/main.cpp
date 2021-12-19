@@ -1,6 +1,8 @@
-
-#include <Arduino.h>
 #include <micro_ros_arduino.h>
+
+#include <vector>
+#include <string>
+#include <functional>
 
 #include <stdio.h>
 #include <rcl/rcl.h>
@@ -10,20 +12,54 @@
 
 #include <std_msgs/msg/int32.h>
 
-
 // nodelets will add themselves to these vectors (since all subscribers and publishers need to be initialized on startup)
 
+
+struct timer_registration {
+  rcl_timer_t timer_obj;
+  int period_ms;
+  rcl_timer_callback_t callback;
+};
+
+
 // micro_ros timer object, period (ms), timer callback (recieves timer_object, last_call_time as arguments)
-std::vector<std::tuple<rcl_timer_t, int, void *(rcl_timer_t*, int64_t)>> component_timers;
+// std::vector<std::tuple<rcl_timer_t, int, std::function<void(rcl_timer_t*, int64_t)>>> component_timers;
+std::vector<timer_registration> component_timers;
+
+
+struct subscription_registration {
+  rcl_subscription_t subscription_obj;
+  std::string topic_name; 
+  rosidl_message_type_support_t* message_type;
+  void* allocated_message;
+  rclc_subscription_callback_t callback;
+};
 
 // micro_ros subscription object, topic name, message type, callback function pointer, best effort/reliable
 //  (true is best effort, false is reliable)
-std::vector<std::tuple<rcl_subscription_t, std::string, rosidl_message_type_support_t*, void *(const void *msgin), bool>> component_subscribers;
+std::vector<subscription_registration> component_subscribers;
+
+// add timers and subscriptions here
+#include "IMU_read.h"
+const unsigned int imu_read_timer_period = 250;
+rcl_timer_t imu_read_time;
+
+void setup_timers() {
+  component_timers.push_back((timer_registration){imu_read_time, imu_read_timer_period, imu_read_timer_callback});
+
+}
 
 
-// includes to files containing subscriptions or timers must be below here
+void setup_subscriptions() {
 
-#include <twist_to_thrusts.h>
+}
+
+
+
+#include <Arduino.h>
+
+// #include <twist_to_thrusts.h>
+
 
 
 // rcl_subscription_t subscriber;
@@ -34,7 +70,7 @@ std::vector<std::tuple<rcl_subscription_t, std::string, rosidl_message_type_supp
 // rcl_subscription_t subscriber_internal;
 // std_msgs__msg__Int32 msg_internal;
 
-// rcl_publisher_t publisher;
+rcl_publisher_t publisher;
 
 // rcl_timer_t timer;
 
@@ -42,8 +78,6 @@ rclc_executor_t executor;
 rclc_support_t support;
 rcl_allocator_t allocator;
 rcl_node_t node;
-
-
 
 
 #define LED_PIN 13
@@ -70,16 +104,19 @@ void error_loop(){
 // }
 
 
-// void subscription_callback_internal(const void * msgin)
-// {
-//   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
-//   digitalWrite(LED_PIN, (msg->data == 0) ? LOW : HIGH);
+void subscription_callback_internal(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+  digitalWrite(LED_PIN, (msg->data == 0) ? LOW : HIGH);
   
-//   RCCHECK(rcl_publish(&publisher, msg, NULL));
-// }
+  RCCHECK(rcl_publish(&publisher, msg, NULL));
+}
 
 
 void setup() {
+  setup_timers();
+  setup_subscriptions();
+
   set_microros_transports();
   
   pinMode(LED_PIN, OUTPUT);
@@ -129,24 +166,39 @@ void setup() {
 //     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 //     "/micro_ros_arduino_node_publisher2"));
 
+  //TODO: delete this stuff:
 
   // set up nodelet subscribers
   int num_handles = 0;
-  for (std::tuple<rcl_timer_t, int, void *(rcl_timer_t*, int64_t)> timer_tuple : component_timers) {
+  for (timer_registration timer_struct : component_timers) {
     RCCHECK(rclc_timer_init_default(
-      &timer,
+      &timer_struct.timer_obj,
       &support,
-      RCL_MS_TO_NS(timer_timeout),
-      timer_callback));
+      RCL_MS_TO_NS(timer_struct.period_ms),
+      timer_struct.callback));
+      num_handles += 1;
+  }
 
+  for (subscription_registration sub : component_subscribers) {
+    RCCHECK(rclc_subscription_init_default(
+      &sub.subscription_obj,
+      &node,
+      sub.message_type,
+      sub.topic_name.c_str()));
+
+      num_handles += 1;
   }
 
 
 
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, num_handles, &allocator));
-  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
-  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_internal, &msg_internal, &subscription_callback_internal, ON_NEW_DATA));
+  // RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+  // RCCHECK(rclc_executor_add_subscription(&executor, &subscriber_internal, &msg_internal, &subscription_callback_internal, ON_NEW_DATA));
+
+    for (subscription_registration sub : component_subscribers) {
+      RCCHECK(rclc_executor_add_subscription(&executor, &sub.subscription_obj, sub.allocated_message, sub.callback, ALWAYS));
+  }
 
 }
 

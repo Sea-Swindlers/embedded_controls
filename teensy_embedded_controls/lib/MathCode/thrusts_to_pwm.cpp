@@ -1,7 +1,7 @@
 
 #include <thrusts_to_pwm.h>
 #include <algorithm>
-#include <vector>
+// #include <vector>
 #include <motor_thrust_to_pwm_mappings.h>
 
 bool comparator(const std::pair<double, int>& first, const std::pair<double, int>& second) {

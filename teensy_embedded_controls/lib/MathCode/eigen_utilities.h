@@ -2,8 +2,8 @@
 #define eigen_utilities_h
 
 
-#include <Eigen.h>
-#include<Dense>
+#include <eigen.h>
+#include <Eigen/Dense>
 
 Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& a);
 
