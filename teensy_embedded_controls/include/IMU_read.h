@@ -1,16 +1,9 @@
-#include <micro_ros_arduino.h>
+#ifndef IMU_read_h
+#define IMU_read_h
 
-#include <vector>
 #include <string>
-#include <functional>
 
-#include <stdio.h>
-#include <rcl/rcl.h>
-#include <rcl/error_handling.h>
-#include <rclc/rclc.h>
-#include <rclc/executor.h>
+void setup_imu();
+std::string get_imu_values();
 
-#include <std_msgs/msg/int32.h>
-
-
-void imu_read_timer_callback(rcl_timer_t * timer, int64_t last_call_time);
+#endif
