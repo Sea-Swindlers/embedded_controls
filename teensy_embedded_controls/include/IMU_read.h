@@ -6,4 +6,6 @@
 void setup_imu();
 std::string get_imu_values();
 
+void publish_imu_values();
+
 #endif

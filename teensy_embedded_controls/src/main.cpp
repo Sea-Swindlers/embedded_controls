@@ -5,12 +5,11 @@
 // #include <stdio.h>
 
 #include <Arduino.h>
-
-#include <Servo.h>
-
+#include <usb_desc.h>
 #include <dummr.h>
 
 #include <IMU_read.h>
+#include <motors.h>
 
 
 /*
@@ -67,40 +66,53 @@ void error_loop(int error_code){
 
 
 void setup() {
+    // wait for a serial console to connect before printing stuff
+    // while (!Serial.available()) {}
+    // delay(500);
+
+    SerialUSB1.printf("hello from usb 1");
+    SerialUSB2.printf("hello from usb 2");
+    
     // turn the LED on to prove life
     pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);  
+    digitalWrite(LED_PIN, LOW);  
 
     dummr_init();
     setup_subscriptions();
+    setup_imu();
+    init_motors();
 }
-
 
 
 void loop() {
 
     if (dummr_check_for_msg()) {
-        String topic = String((const char*) dummr_last_topic["topic"]);
+        String topic = String((const char*) get_last_topic_json()["topic"]);
 
         if (topic.equals("/teensy/input")) {
-        // use the arduinojson assistant to figure out how big StaticJsonDocument should be - https://arduinojson.org/v6/assistant/
-        StaticJsonDocument<256> return_doc;
-        return_doc["data"] = dummr_last_message_data["data"]; 
-        pub_message("/teensy/echo", "std_msgs/String", return_doc);
+            // use the arduinojson assistant to figure out how big StaticJsonDocument should be - https://arduinojson.org/v6/assistant/
+            StaticJsonDocument<256> return_doc;
+            return_doc["data"] = get_last_message_json()["data"]; 
+            pub_message("/teensy/echo", "std_msgs/String", return_doc);
         }
     }
 
-    std::string imu_reading = get_imu_values();
+    loop_motors();
 
-    StaticJsonDocument<2048> imu_doc;
-    imu_doc["data"] = dummr_last_message_data["data"]; 
-    pub_message("/teensy/imu_reading", "std_msgs/String", imu_doc);
+    // std::string imu_reading = get_imu_values();
+    publish_imu_values();
 
 
-    digitalWrite(LED_PIN, HIGH);
-    delay(500);
+    for (int i = 0; i < 6; i++) {
+        digitalWrite(LED_PIN, HIGH);
+        spin_motor(i, 0.1);
+        delay(1200);
 
-    digitalWrite(LED_PIN, LOW);
-    delay(500);
+        digitalWrite(LED_PIN, LOW);
+        spin_motor(i, -0.1);
+        delay(1200);
 
+        spin_motor(i, 0);
+        // delay(1200);
+    }
 }
